@@ -2,20 +2,26 @@ import  { useState } from 'react';
 import { Link } from 'react-router';
 import { FiUser, FiMail, FiLock, FiArrowLeft, FiShield } from 'react-icons/fi';
 
-const SignUp = () => {
+const SignUpPage = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('MEMBER'); // default UserRole.MEMBER
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  // Get host API from env or fallback to your Render URL
+  const HOST_API = 
+    import.meta.env?.VITE_HOST_API || 
+    'https://library-management-api-9ghg.onrender.com';
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    // Validation matching your schema constraints
+    // Frontend validation matching your Pydantic schema constraints
     if (username.length < 3 || username.length > 50) {
       setError('Username must be between 3 and 50 characters.');
       return;
@@ -33,7 +39,7 @@ const SignUp = () => {
       return;
     }
 
-    const userData = {
+    const payload = {
       username,
       email,
       firstname,
@@ -42,8 +48,33 @@ const SignUp = () => {
       role,
     };
 
-    console.log(userData);
-    
+    setLoading(true);
+
+    try {
+      // NOTE: Replace '/api/v1/auth/signup' or '/users/' with your actual FastAPI endpoint path
+      const response = await fetch(`${HOST_API}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      console.log(data);
+
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || 'Registration failed. Please try again.');
+      }
+
+      alert(`Account created successfully for ${username}!`);
+
+
+    } catch (err) {
+      setError(err.message || 'An error occurred while connecting to the server.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -174,7 +205,7 @@ const SignUp = () => {
               </div>
             </div>
 
-            {/* Role Selection Field (Member or Librarian) */}
+            {/* Role Selection Field */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
                 User Role
@@ -186,8 +217,8 @@ const SignUp = () => {
                   onChange={(e) => setRole(e.target.value)}
                   className="select select-bordered w-full pl-10 text-sm rounded-md focus:outline-none focus:border-teal-700"
                 >
-                  <option value="MEMBER">Member</option>
-                  <option value="LIBRARIAN">Librarian</option>
+                  <option value="member">Member</option>
+                  <option value="librarian">Librarian</option>
                 </select>
               </div>
             </div>
@@ -195,9 +226,14 @@ const SignUp = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              className="btn bg-teal-700 hover:bg-teal-800 text-white w-full border-none rounded-md mt-4"
+              disabled={loading}
+              className="btn bg-teal-700 hover:bg-teal-800 text-white w-full border-none rounded-md mt-4 flex items-center justify-center"
             >
-              Sign Up
+              {loading ? (
+                <span className="loading loading-spinner loading-sm"></span>
+              ) : (
+                'Sign Up'
+              )}
             </button>
           </form>
 
@@ -219,4 +255,4 @@ const SignUp = () => {
   );
 };
 
-export default SignUp;
+export default SignUpPage;

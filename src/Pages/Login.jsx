@@ -1,32 +1,77 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link,useNavigate } from 'react-router';
 import { FiLock, FiUser, FiArrowLeft } from 'react-icons/fi';
 
-
-const Login = () => {
+const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  // Get host API from env or fallback to your Render URL
+  const HOST_API = 
+    import.meta.env?.VITE_HOST_API || 
+    'https://library-management-api-9ghg.onrender.com';
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    // Basic validation check (replace with your auth logic)
     if (!username || !password) {
       setError('Please enter both username and password.');
       return;
     }
 
-    console.log(username,password);
+    setLoading(true);
+
+    try {
+      // OAuth2PasswordRequestForm requires application/x-www-form-urlencoded
+      const formData = new URLSearchParams();
+      formData.append('username', username);
+      formData.append('password', password);
+
+      // NOTE: Update '/auth/token' or '/token' to match your actual FastAPI login/token endpoint
+      const response = await fetch(`${HOST_API}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString(),
+      });
+
+      const data = await response.json();
+      console.log(data);
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Invalid username or password.');
+      }
+
+      // Save the bearer token in localStorage (or your auth state)
+      if (data.access_token) {
+        localStorage.setItem('lm_token', data.access_token);
+      }
+
+      if (response.ok){
+        navigate('/')
+      }
+
+
+    } catch (err) {
+      setError(err.message || 'An error occurred while connecting to the server.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      {/* Optional Back to Home link */}
       
         <div className="max-w-md mx-auto w-full px-6 mb-4">
           <Link
-            to={"/"}
+            type="button"
+            to={'/'}
             className="flex items-center gap-2 text-sm text-teal-700 hover:text-teal-900 font-medium"
           >
             <FiArrowLeft /> Back to Home
@@ -65,6 +110,7 @@ const Login = () => {
                 <FiUser className="absolute left-3.5 top-3.5 text-gray-400" />
                 <input
                   type="text"
+                  required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter your username"
@@ -82,6 +128,7 @@ const Login = () => {
                 <FiLock className="absolute left-3.5 top-3.5 text-gray-400" />
                 <input
                   type="password"
+                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
@@ -104,18 +151,27 @@ const Login = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              className="btn bg-teal-700 hover:bg-teal-800 text-white w-full border-none rounded-md mt-2"
+              disabled={loading}
+              className="btn bg-teal-700 hover:bg-teal-800 text-white w-full border-none rounded-md mt-2 flex items-center justify-center"
             >
-              Sign In
+              {loading ? (
+                <span className="loading loading-spinner loading-sm"></span>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
 
           {/* Footer note */}
           <div className="mt-6 text-center text-xs text-gray-500">
             Don't have an account?{' '}
-            <a href="#register" className="text-teal-700 font-semibold hover:underline">
+            <Link
+              type="button"
+              to={'/signUp'}
+              className="text-teal-700 font-semibold hover:underline bg-transparent border-none cursor-pointer"
+            >
               Create an account
-            </a>
+            </Link>
           </div>
 
         </div>
@@ -124,4 +180,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default LoginPage;
